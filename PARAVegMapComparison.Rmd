@@ -22,6 +22,7 @@ veg.compare <- read.csv("M:/GIS/Projects/PARA_IU/PARA_NPSVeg_Landfire_20180228.c
 ## How does LANDFIRE classify each veg map category?
 ```{r byvegmap, echo = FALSE}
 selectInput("VegMapClass", label = "Select an NPS veg map category", choices = unique(veg.compare$NPS_S))
+selectInput("VegMapPlotType", label = "Select a plot type", choices = c("Bar", "Pie"))
 ```
 
 ```{r plotlandfirebyvegmap, echo = FALSE}
@@ -30,14 +31,19 @@ landfire.classes <- reactive({
 })
 
 renderPlotly({
-    plot_ly(landfire.classes(), labels = ~Landfire, values = ~Area_m2, type = "pie") %>%
-        layout(xaxis = list(showticklabels = FALSE))
+    if (input$VegMapPlotType == "Bar") {
+        plot_ly(landfire.classes(), x = ~Landfire, y = ~Area_m2, type = "bar") %>%
+            layout(xaxis = list(showticklabels = FALSE))
+    } else if (input$VegMapPlotType == "Pie") {
+        plot_ly(landfire.classes(), labels = ~Landfire, values = ~Area_m2, type = "pie")
+    }
 })
 ```
 
 ## Which veg map categories are associated with each LANDFIRE category?
 ```{r bylandfire, echo = FALSE}
 selectInput("LandfireClass", label = "Select a LANDFIRE category", choices = unique(veg.compare$Landfire))
+selectInput("LandfirePlotType", label = "Select a plot type", choices = c("Bar", "Pie"))
 ```
 
 ```{r plotvegmapbylandfire, echo = FALSE}
@@ -46,12 +52,24 @@ vegmap.classes <- reactive({
 })
 
 renderPlotly({
-    plot_ly(vegmap.classes(), x = ~NPS_S, y = ~Area_m2, type = "bar") %>%
+    if (input$LandfirePlotType == "Bar") {
+        plot_ly(vegmap.classes(), x = ~NPS_S, y = ~Area_m2, type = "bar") %>%
         layout(xaxis = list(showticklabels = FALSE))
+    } else if (input$LandfirePlotType == "Pie") {
+        plot_ly(vegmap.classes(), labels = ~NPS_S, values = ~Area_m2, type = "pie")
+    }
 })
 ```
 
 ## How accurately can we predict Artemisia based only on LANDFIRE categories?
+
+**TotalArea_m2**: Total area, in square meters, covered by a given LANDFIRE category. We are only looking at the part of the LANDFIRE data that intersects the NPS veg map for PARA, not the LANDFIRE data for the entire park.
+
+**ARTR2_Shrubland_pct**: Percentage of total area for a given LANDFIRE category that (according to the NPS veg map) is Artemisia tridentata Shrubland Alliance
+
+**ARTEM_PIED_JUOS_pct**: Percentage of total area for a given LANDFIRE category that (according to the NPS veg map) is Pinus edulis - Juniperus osteosperma / Artemisia Woodland Alliance
+
+**All_ARTEM_pct**: Percentage of total area for a given LANDFIRE category that (according to the NPS veg map) is Artemisia tridentata Shrubland Alliance, Pinus edulis - Juniperus osteosperma / Artemisia Woodland Alliance, or both.
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 # Filter out everything that is not classified as Artemisia in the NPS veg map, then get list of LANDFIRE categories that fall within those areas
 artemisia.only <- filter(veg.compare, grepl("*Artemisia*", NPS_S, ignore.case = TRUE)) %>%
