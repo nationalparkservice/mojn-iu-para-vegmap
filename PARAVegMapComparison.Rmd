@@ -1,0 +1,52 @@
+---
+title: "PARA Veg Map Comparison"
+author: "Sarah Wright"
+date: "February 28, 2018"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(shiny)
+library(tidyverse)
+library(plotly)
+```
+
+```{r import, echo = FALSE}
+veg.compare <- read.csv("M:/GIS/Projects/PARA_IU/PARA_NPSVeg_Landfire_20180228.csv", as.is = TRUE) %>%
+    select(Landfire, NPS_S, NPS_C, Area_m2) %>%
+    mutate(Area_m2 = round(Area_m2, digits = 0))
+```
+
+## How does LANDFIRE classify each veg map category?
+```{r byvegmap, echo = FALSE}
+selectInput("VegMapClass", label = "Select an NPS veg map category", choices = unique(veg.compare$NPS_S))
+```
+
+```{r plotlandfirebyvegmap, echo = FALSE}
+landfire.classes <- reactive({
+    filter(veg.compare, NPS_S == input$VegMapClass)
+})
+
+renderPlotly({
+    plot_ly(landfire.classes(), labels = ~Landfire, values = ~Area_m2, type = "pie") %>%
+        layout(xaxis = list(showticklabels = FALSE))
+})
+```
+
+## Which veg map categories are associated with each LANDFIRE category?
+```{r bylandfire, echo = FALSE}
+selectInput("LandfireClass", label = "Select a LANDFIRE category", choices = unique(veg.compare$Landfire))
+```
+
+```{r plotvegmapbylandfire, echo = FALSE}
+vegmap.classes <- reactive({
+    filter(veg.compare, Landfire == input$LandfireClass)
+})
+
+renderPlotly({
+    plot_ly(vegmap.classes(), x = ~NPS_S, y = ~Area_m2, type = "bar") %>%
+        layout(xaxis = list(showticklabels = FALSE))
+})
+```
