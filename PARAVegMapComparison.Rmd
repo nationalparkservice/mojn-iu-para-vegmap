@@ -50,3 +50,33 @@ renderPlotly({
         layout(xaxis = list(showticklabels = FALSE))
 })
 ```
+
+## How accurately can we predict Artemisia based only on LANDFIRE categories?
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# Filter out everything that is not classified as Artemisia in the NPS veg map, then get list of LANDFIRE categories that fall within those areas
+artemisia.only <- filter(veg.compare, grepl("*Artemisia*", NPS_S, ignore.case = TRUE)) %>%
+    group_by(Landfire, NPS_S, NPS_C) %>%
+    summarise(Area_m2 = sum(Area_m2))
+possible.lf.artemisia <- select(artemisia.only, Landfire) %>%
+    unique()
+
+# For each LF (LANDFIRE) category that could be Artemisia, find out what percentage of area covered by that LF category is classified as Artemisia by the NPS veg map
+lf.total.areas <- filter(veg.compare, Landfire %in% possible.lf.artemisia$Landfire) %>%
+    group_by(Landfire) %>%
+    summarise(TotalArea_m2 = sum(Area_m2))
+artemisia.pct <- inner_join(artemisia.only, lf.total.areas, by = "Landfire") %>%
+    mutate(PercentTotalLFArea = 100 * (Area_m2 / TotalArea_m2), PercentTotalLFArea = round(PercentTotalLFArea, digits = 2)) %>%
+    select(-NPS_C, -Area_m2) %>%
+    spread(NPS_S, PercentTotalLFArea) %>%
+    rename(ARTR2_Shrubland_pct = `Artemisia tridentata Shrubland Alliance`,
+           ARTEM_PIED_JUOS_pct = `Pinus edulis - Juniperus osteosperma / Artemisia Woodland Alliance`) %>%
+    mutate(ARTR2_Shrubland_pct = if_else(is.na(ARTR2_Shrubland_pct), 0, ARTR2_Shrubland_pct),
+           ARTEM_PIED_JUOS_pct = if_else(is.na(ARTEM_PIED_JUOS_pct), 0, ARTEM_PIED_JUOS_pct),
+           All_ARTEM_pct = ARTR2_Shrubland_pct + ARTEM_PIED_JUOS_pct)
+```
+
+```{r echo = FALSE}
+renderDataTable({
+    artemisia.pct
+})
+```
